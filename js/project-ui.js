@@ -157,18 +157,29 @@ const ProjectUI = {
     // Update project select dropdown
     updateDropdown: function() {
         const projectSelect = this.elements.projectSelect;
+        if (!projectSelect) return;
         
         // Clear existing options
         projectSelect.innerHTML = '';
         
-        // Sort projects with Inbox always first, and filter out archived projects
-        const sortedProjects = [...projects]
-            .filter(p => !p.archived)
-            .sort((a, b) => {
-                if (a.id === 'inbox') return -1;
-                if (b.id === 'inbox') return 1;
-                return a.name.localeCompare(b.name);
-            });
+        // Get active projects (non-archived ones)
+        const activeProjects = projects.filter(p => !p.archived);
+        
+        // Sort projects with Inbox always first, then by order property
+        const sortedProjects = [...activeProjects].sort((a, b) => {
+            if (a.id === 'inbox') return -1;
+            if (b.id === 'inbox') return 1;
+            
+            // Sort by order property if available
+            const aOrder = a.order !== undefined ? a.order : Number.MAX_SAFE_INTEGER;
+            const bOrder = b.order !== undefined ? b.order : Number.MAX_SAFE_INTEGER;
+            if (aOrder !== bOrder) {
+                return aOrder - bOrder;
+            }
+            
+            // Fall back to alphabetical
+            return a.name.localeCompare(b.name);
+        });
         
         // Add project options
         sortedProjects.forEach(project => {
@@ -243,26 +254,99 @@ const ProjectUI = {
         });
     },
     
+    // Toggle collapse/expand all projects
+    toggleCollapseAll: function() {
+        // Check if collapsedProjects is defined
+        if (typeof collapsedProjects === 'undefined') {
+            console.error('collapsedProjects is not defined');
+            return;
+        }
+        
+        const button = document.querySelector('#projects-container .btn-outline-secondary');
+        if (!button) return;
+        
+        const isCollapsed = button.innerHTML.includes('Collapse');
+        
+        // Get all active projects (except Inbox)
+        const activeProjects = projects.filter(p => !p.archived && p.id !== 'inbox');
+        
+        activeProjects.forEach(project => {
+            if (isCollapsed) {
+                // Collapse all projects
+                collapsedProjects.add(project.id);
+            } else {
+                // Expand all projects
+                collapsedProjects.delete(project.id);
+            }
+        });
+        
+        // Save the collapsed state if function exists
+        if (typeof saveCollapsedState === 'function') {
+            saveCollapsedState();
+        }
+        
+        // Update the button text
+        if (isCollapsed) {
+            button.innerHTML = '<i class="bi bi-arrows-expand"></i> Expand All';
+        } else {
+            button.innerHTML = '<i class="bi bi-arrows-collapse"></i> Collapse All';
+        }
+        
+        // Refresh the todos view to apply the changes
+        if (typeof UI !== 'undefined' && typeof UI.renderTodosByProject === 'function') {
+            UI.renderTodosByProject();
+        }
+    },
+    
     // Render projects list
     renderList: function() {
         const projectsContainer = this.elements.projectsContainer;
+        if (!projectsContainer) return;
+        
         projectsContainer.innerHTML = '';
         
-        // Sort projects with Inbox always first
-        const activeProjects = [...projects]
-            .filter(p => !p.archived)
-            .sort((a, b) => {
-                if (a.id === 'inbox') return -1;
-                if (b.id === 'inbox') return 1;
-                return a.name.localeCompare(b.name);
-            });
+        // Add collapse/expand all button at the top
+        const collapseAllContainer = document.createElement('div');
+        collapseAllContainer.className = 'd-flex justify-content-end mb-2';
         
-        const archivedProjects = [...projects]
-            .filter(p => p.archived)
-            .sort((a, b) => a.name.localeCompare(b.name));
+        const collapseAllButton = document.createElement('button');
+        collapseAllButton.className = 'btn btn-sm btn-outline-secondary';
+        collapseAllButton.innerHTML = '<i class="bi bi-arrows-collapse"></i> Collapse All';
+        collapseAllButton.addEventListener('click', this.toggleCollapseAll.bind(this));
+        
+        collapseAllContainer.appendChild(collapseAllButton);
+        projectsContainer.appendChild(collapseAllContainer);
+        
+        // Get active and archived projects
+        const activeProjects = projects.filter(p => !p.archived);
+        const archivedProjects = projects.filter(p => p.archived);
+        
+        // Ensure all projects have an order property if function exists
+        if (typeof initializeProjectOrders === 'function') {
+            initializeProjectOrders();
+        }
+        
+        // Sort active projects with Inbox always first, then by order property
+        const sortedActiveProjects = [...activeProjects].sort((a, b) => {
+            if (a.id === 'inbox') return -1;
+            if (b.id === 'inbox') return 1;
+            
+            // Sort by order property if available
+            const aOrder = a.order !== undefined ? a.order : Number.MAX_SAFE_INTEGER;
+            const bOrder = b.order !== undefined ? b.order : Number.MAX_SAFE_INTEGER;
+            if (aOrder !== bOrder) {
+                return aOrder - bOrder;
+            }
+            
+            // Fall back to alphabetical
+            return a.name.localeCompare(b.name);
+        });
+        
+        // Sort archived projects alphabetically
+        const sortedArchivedProjects = [...archivedProjects].sort((a, b) => a.name.localeCompare(b.name));
         
         // Render active projects
-        activeProjects.forEach(project => {
+        sortedActiveProjects.forEach(project => {
             const projectItem = this.createProjectItem(project);
             projectsContainer.appendChild(projectItem);
         });
@@ -276,7 +360,7 @@ const ProjectUI = {
             projectsContainer.appendChild(archivedHeader);
             
             // Add archived projects
-            archivedProjects.forEach(project => {
+            sortedArchivedProjects.forEach(project => {
                 const projectItem = this.createProjectItem(project);
                 projectsContainer.appendChild(projectItem);
             });
@@ -286,8 +370,13 @@ const ProjectUI = {
     // Create a project item element
     createProjectItem: function(project) {
         const projectItem = document.createElement('div');
-        projectItem.className = 'list-group-item d-flex flex-column';
+        projectItem.className = 'list-group-item d-flex flex-column project-item';
         projectItem.id = `project-${project.id}`;
+        
+        // Add classes for special projects
+        if (project.id === 'inbox') {
+            projectItem.classList.add('inbox-project');
+        }
         
         // Main row with project info and actions
         const mainRow = document.createElement('div');
@@ -296,6 +385,49 @@ const ProjectUI = {
         // Project info section (color, name, count)
         const projectInfo = document.createElement('div');
         projectInfo.className = 'd-flex align-items-center';
+        
+        // Add collapse/expand toggle (except for Inbox)
+        if (project.id !== 'inbox' && !project.archived) {
+            const collapseToggle = document.createElement('button');
+            collapseToggle.className = 'btn btn-sm btn-link text-decoration-none me-1 collapse-toggle';
+            
+            // Check if isProjectCollapsed function exists
+            const isCollapsed = typeof isProjectCollapsed === 'function' && isProjectCollapsed(project.id);
+            
+            collapseToggle.innerHTML = isCollapsed 
+                ? '<i class="bi bi-chevron-right"></i>' 
+                : '<i class="bi bi-chevron-down"></i>';
+            collapseToggle.title = isCollapsed ? 'Expand' : 'Collapse';
+            collapseToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Check if toggleProjectCollapse function exists
+                if (typeof toggleProjectCollapse !== 'function') {
+                    console.error('toggleProjectCollapse function is not defined');
+                    return;
+                }
+                
+                // Toggle collapse state
+                const isExpanded = toggleProjectCollapse(project.id);
+                
+                // Update button appearance
+                if (isExpanded) {
+                    collapseToggle.innerHTML = '<i class="bi bi-chevron-down"></i>';
+                    collapseToggle.title = 'Collapse';
+                } else {
+                    collapseToggle.innerHTML = '<i class="bi bi-chevron-right"></i>';
+                    collapseToggle.title = 'Expand';
+                }
+                
+                // Refresh the todos view to apply the changes
+                if (typeof UI !== 'undefined' && typeof UI.renderTodosByProject === 'function') {
+                    UI.renderTodosByProject();
+                }
+            });
+            
+            projectInfo.appendChild(collapseToggle);
+        }
         
         const colorIndicator = document.createElement('span');
         colorIndicator.className = 'project-color';
@@ -354,28 +486,60 @@ const ProjectUI = {
         actionsContainer.appendChild(notesButton);
         actionsContainer.appendChild(toggleNotesButton);
         
-        // Only add archive/unarchive/delete buttons if not the Inbox project
+        // Only add move/archive/delete buttons if not the Inbox project
         if (!project.isDefault) {
-            if (project.archived) {
-                // Unarchive button
-                const unarchiveButton = document.createElement('button');
-                unarchiveButton.className = 'btn btn-sm btn-outline-primary me-1';
-                unarchiveButton.innerHTML = '<i class="bi bi-arrow-up-square"></i>';
-                unarchiveButton.title = 'Unarchive Project';
-                unarchiveButton.addEventListener('click', () => {
-                    unarchiveProject(project.id);
+            if (!project.archived) {
+                // Add up/down buttons for reordering
+                const moveUpButton = document.createElement('button');
+                moveUpButton.className = 'btn btn-sm btn-outline-primary me-1';
+                moveUpButton.innerHTML = '<i class="bi bi-arrow-up"></i>';
+                moveUpButton.title = 'Move Up';
+                moveUpButton.addEventListener('click', () => {
+                    if (typeof moveProjectUp === 'function') {
+                        moveProjectUp(project.id);
+                    } else {
+                        console.error('moveProjectUp function is not defined');
+                    }
                 });
-                actionsContainer.appendChild(unarchiveButton);
-            } else {
+                
+                const moveDownButton = document.createElement('button');
+                moveDownButton.className = 'btn btn-sm btn-outline-primary me-1';
+                moveDownButton.innerHTML = '<i class="bi bi-arrow-down"></i>';
+                moveDownButton.title = 'Move Down';
+                moveDownButton.addEventListener('click', () => {
+                    if (typeof moveProjectDown === 'function') {
+                        moveProjectDown(project.id);
+                    } else {
+                        console.error('moveProjectDown function is not defined');
+                    }
+                });
+                
+                actionsContainer.appendChild(moveUpButton);
+                actionsContainer.appendChild(moveDownButton);
+                
                 // Archive button
                 const archiveButton = document.createElement('button');
                 archiveButton.className = 'btn btn-sm btn-outline-secondary me-1';
                 archiveButton.innerHTML = '<i class="bi bi-archive"></i>';
                 archiveButton.title = 'Archive Project';
                 archiveButton.addEventListener('click', () => {
-                    archiveProject(project.id);
+                    if (typeof archiveProject === 'function') {
+                        archiveProject(project.id);
+                    }
                 });
                 actionsContainer.appendChild(archiveButton);
+            } else {
+                // Unarchive button
+                const unarchiveButton = document.createElement('button');
+                unarchiveButton.className = 'btn btn-sm btn-outline-primary me-1';
+                unarchiveButton.innerHTML = '<i class="bi bi-arrow-up-square"></i>';
+                unarchiveButton.title = 'Unarchive Project';
+                unarchiveButton.addEventListener('click', () => {
+                    if (typeof unarchiveProject === 'function') {
+                        unarchiveProject(project.id);
+                    }
+                });
+                actionsContainer.appendChild(unarchiveButton);
             }
             
             // Delete button
@@ -385,7 +549,9 @@ const ProjectUI = {
             deleteButton.title = 'Delete Project';
             deleteButton.addEventListener('click', () => {
                 if (confirm(`Are you sure you want to delete "${project.name}" project? Tasks will be moved to Inbox.`)) {
-                    deleteProject(project.id);
+                    if (typeof deleteProject === 'function') {
+                        deleteProject(project.id);
+                    }
                 }
             });
             actionsContainer.appendChild(deleteButton);

@@ -344,7 +344,10 @@ const ArchiveUI = {
         // Todo text with completion indicator
         const textCol = document.createElement('div');
         textCol.className = 'todo-text completed';
-        textCol.textContent = todo.text;
+        
+        // Replace @tags with highlighted spans for display
+        const displayText = todo.text.replace(/(\B@[a-zA-Z0-9_-]+\b)/g, '<span class="tag-reference">$1</span>');
+        textCol.innerHTML = displayText;
         
         // Action buttons
         const actionCol = document.createElement('div');
@@ -384,6 +387,15 @@ const ArchiveUI = {
         row.appendChild(actionCol);
         
         cardBody.appendChild(row);
+        
+        // Add tag pills if the todo has tags
+        if (todo.tags && todo.tags.length > 0 && TagUI) {
+            const tagPills = TagUI.createTagPills(todo.tags);
+            if (tagPills) {
+                cardBody.appendChild(tagPills);
+            }
+        }
+        
         todoElement.appendChild(cardBody);
         
         // Add notes preview if notes exist

@@ -43,7 +43,7 @@
                                 <!-- Add new todo form -->
                                 <form id="todo-form" class="row g-3 mb-4">
                                     <div class="col-md-8">
-                                        <input type="text" class="form-control" id="todo-input" placeholder="Add a new task... (Ctrl+Shift+N)" required>
+                                        <input type="text" class="form-control" id="todo-input" placeholder="Add a new task... (Use @tag for tags, e.g. 'Buy milk @shopping')" required>
                                     </div>
                                     <div class="col-md-3">
                                         <select class="form-select" id="project-select">
@@ -56,6 +56,14 @@
                                         </button>
                                     </div>
                                 </form>
+                                
+                                <!-- Tag help text -->
+                                <div class="alert alert-light mb-3">
+                                    <small>
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        <strong>Pro Tip:</strong> Add tags to your tasks using <code>@tagname</code> format. Click on tags to filter your tasks.
+                                    </small>
+                                </div>
                                 
                                 <!-- Todo display area (grouped by projects) -->
                                 <div id="todo-projects-container"></div>
@@ -107,15 +115,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     
     <!-- Application Scripts -->
-    <script src="js/models.js"></script>
-    <script src="js/storage.js"></script>
-    <script src="js/status-ui.js"></script>
-    <script src="js/project-ui.js"></script>
-    <script src="js/notes-ui.js"></script>
-    <script src="js/todo-ui.js"></script>
-    <script src="js/archive-ui.js"></script>
-    <script src="js/keyboard-shortcuts.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/app.js"></script>
+<!-- Load in this specific order -->
+<script src="js/models.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/todo-ui.js"></script>      <!-- Load components FIRST -->
+<script src="js/project-ui.js"></script>
+<script src="js/tag-ui.js"></script>
+<script src="js/archive-ui.js"></script>
+<script src="js/notes-ui.js"></script>
+<script src="js/status-ui.js"></script>
+<script src="js/keyboard-shortcuts.js"></script>
+<script src="js/ui.js"></script>           <!-- Load UI AFTER components -->
+<script src="js/app.js"></script>          <!-- Load app.js LAST -->
 </body>
 </html>

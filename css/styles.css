@@ -1,10 +1,23 @@
+/* Complete styles.css for Todo App */
+
+/* General Layout */
+body {
+  background-color: #f8f9fa;
+}
+
+.container {
+  max-width: 1200px;
+}
+
 /* Todo Items */
 .todo-item {
   cursor: pointer;
 }
+
 .todo-text {
   flex: 1;
 }
+
 .completed {
   text-decoration: line-through;
   color: #6c757d;
@@ -14,12 +27,15 @@
 .project-container {
   margin-bottom: 2rem;
 }
+
 .card-header {
   background-color: rgba(0, 0, 0, 0.03);
 }
+
 .project-header {
   background-color: rgba(0, 0, 0, 0.08) !important; /* Darker background for project headers */
 }
+
 .project-color {
   width: 16px;
   height: 16px;
@@ -27,6 +43,7 @@
   margin-right: 8px;
   border-radius: 3px;
 }
+
 .inbox-project {
   border-left-color: #03DAC6;
 }
@@ -35,9 +52,6 @@
 .todo-card {
   margin-bottom: 0.5rem;
   border-left: 4px solid transparent;
-}
-.todo-card.dragging {
-  opacity: 0.4;
 }
 
 /* Notes Styling */
@@ -53,6 +67,7 @@
   text-overflow: ellipsis;
   max-width: 100%;
 }
+
 .notes-preview i {
   margin-right: 0.3rem;
 }
@@ -89,7 +104,27 @@
 
 /* Improved drag & drop effects */
 .dropzone {
-  transition: background-color 0.2s, border-color 0.2s;
+  min-height: 60px;
+  border: 2px dashed #dee2e6;
+  border-radius: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  transition: height 0.3s ease-out;
+  overflow: hidden;
+}
+
+.dropzone.drag-over {
+  background-color: rgba(0, 123, 255, 0.1);
+  border-color: #007bff;
+}
+
+.dropzone.collapsed {
+  border-style: dotted;
+  opacity: 0.5;
+}
+
+.dropzone.collapsing {
+  height: 0;
 }
 
 /* Archive Section */
@@ -99,22 +134,27 @@
   margin-top: 1.5rem;
   padding: 0.5rem;
 }
+
 .archive-title {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
+
 .archived-todo {
   background-color: #f8f9fa;
   opacity: 0.85;
 }
+
 .archived-todo .todo-text {
   color: #6c757d;
 }
+
 .archive-todos {
   padding-left: 1rem;
   margin-bottom: 1rem;
 }
+
 #archive-content {
   transition: all 0.3s ease;
 }
@@ -129,33 +169,23 @@
   opacity: 0.8;
 }
 
-/* Drag and Drop */
-.dropzone {
-  min-height: 60px;
-  border: 2px dashed #dee2e6;
-  border-radius: 0.25rem;
-  margin-bottom: 1rem;
-  padding: 0.5rem;
-}
-.dropzone.drag-over {
-  background-color: rgba(0, 123, 255, 0.1);
-  border-color: #007bff;
-}
-
 /* Inline Editing */
 .edit-form {
   display: flex;
   margin-bottom: 0;
 }
+
 .edit-input {
   flex: 1;
 }
+
 .inline-edit-input {
   border: none;
   border-bottom: 1px solid #ced4da;
   background-color: rgba(0, 123, 255, 0.05);
   padding: 0.25rem;
 }
+
 .inline-edit-input:focus {
   outline: none;
   border-color: #007bff;
@@ -171,6 +201,7 @@
   font-size: 0.75rem;
   color: #6c757d;
 }
+
 .empty-list-message {
   color: #6c757d;
   font-style: italic;
@@ -182,4 +213,156 @@
 .action-buttons button {
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
+}
+
+/* Project Ordering and Collapsing */
+.collapse-toggle {
+  padding: 0;
+  color: #6c757d;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+
+.collapse-toggle:hover {
+  color: #0d6efd;
+  transform: scale(1.1);
+}
+
+/* Project reordering buttons */
+.project-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.project-actions .btn-outline-primary {
+  padding: 0.25rem 0.5rem;
+  opacity: 0.7;
+  transition: all 0.2s;
+}
+
+.project-actions .btn-outline-primary:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Highlight the current position of a project */
+.project-item {
+  transition: background-color 0.2s ease;
+}
+
+.project-item:hover {
+  background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* Order indicator */
+.project-order {
+  color: #6c757d;
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+  opacity: 0.7;
+}
+
+/* Tag Styling */
+.tag-reference {
+  display: inline;
+  color: #17a2b8;
+  font-weight: 500;
+}
+
+.tag-pills {
+  padding-left: 2.2rem;
+  margin-top: 0.5rem;
+}
+
+.tag-pill {
+  font-size: 75%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tag-pill:hover {
+  transform: scale(1.05);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Tag input highlight */
+.tag-input-active {
+  border-color: #17a2b8 !important;
+  box-shadow: 0 0 0 0.2rem rgba(23, 162, 184, 0.25) !important;
+}
+
+/* Tag Filter Section */
+#tag-filter-container {
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem;
+  border-radius: 0.25rem;
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.tag-filter {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 85%;
+}
+
+.tag-filter:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
+/* Keyboard shortcuts button */
+.shortcuts-btn {
+  position: absolute;
+  right: 1rem;
+  top: 0.5rem;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .project-actions {
+    flex-wrap: wrap;
+  }
+  
+  .tag-pills {
+    padding-left: 2rem;
+  }
+  
+  .notes-preview {
+    padding-left: 2rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  .action-buttons, 
+  .card-header button,
+  .tag-filter-container,
+  #archive-container,
+  .project-actions {
+    display: none !important;
+  }
+  
+  .dropzone {
+    border: none;
+  }
+  
+  .todo-card {
+    break-inside: avoid;
+  }
+  
+  .project-container {
+    break-before: page;
+  }
 }

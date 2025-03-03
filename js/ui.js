@@ -21,35 +21,75 @@ const UI = {
             statusMessage: document.getElementById('status-message')
         };
         
-        // Initialize UI modules
-        TodoUI.init(this.elements);
-        ProjectUI.init(this.elements);
-        StatusUI.init(this.elements);
-        ArchiveUI.init(this.elements);
-        NotesUI.init(this.elements);
-        KeyboardShortcuts.init(this.elements);
+        // Initialize UI modules with existence checks for robustness
+        this.tryInitModule('TodoUI');
+        this.tryInitModule('ProjectUI');
+        this.tryInitModule('StatusUI');
+        this.tryInitModule('TagUI');
+        this.tryInitModule('ArchiveUI');
+        this.tryInitModule('NotesUI');
+        this.tryInitModule('KeyboardShortcuts');
+    },
+    
+    // Try to initialize a module if it exists
+    tryInitModule: function(moduleName) {
+        if (typeof window[moduleName] !== 'undefined' && typeof window[moduleName].init === 'function') {
+            try {
+                window[moduleName].init(this.elements);
+                console.log(`Initialized ${moduleName} successfully`);
+            } catch (error) {
+                console.error(`Error initializing ${moduleName}:`, error);
+            }
+        } else {
+            console.warn(`Module ${moduleName} not found or init method missing`);
+        }
     },
 
     // Show status message (delegated to StatusUI)
     showStatusMessage: function(message, type) {
-        StatusUI.showMessage(message, type);
+        if (typeof StatusUI !== 'undefined' && typeof StatusUI.showMessage === 'function') {
+            StatusUI.showMessage(message, type);
+        } else {
+            // Fallback if StatusUI is not available
+            const statusMessage = this.elements.statusMessage;
+            if (statusMessage) {
+                statusMessage.textContent = message;
+                statusMessage.className = `alert alert-${type || 'info'}`;
+                statusMessage.style.display = 'block';
+                
+                // Hide after 3 seconds
+                setTimeout(() => {
+                    statusMessage.style.display = 'none';
+                }, 3000);
+            } else {
+                console.log(`Status message: ${message} (${type})`);
+            }
+        }
     },
     
-    // Delegate methods to their respective modules
+    // Delegate methods to their respective modules with error handling
     updateProjectsDropdown: function() {
-        ProjectUI.updateDropdown();
+        if (typeof ProjectUI !== 'undefined' && typeof ProjectUI.updateDropdown === 'function') {
+            ProjectUI.updateDropdown();
+        }
     },
     
     renderTodosByProject: function() {
-        TodoUI.renderByProject();
+        if (typeof TodoUI !== 'undefined' && typeof TodoUI.renderByProject === 'function') {
+            TodoUI.renderByProject();
+        }
     },
     
     renderProjects: function() {
-        ProjectUI.renderList();
+        if (typeof ProjectUI !== 'undefined' && typeof ProjectUI.renderList === 'function') {
+            ProjectUI.renderList();
+        }
     },
     
     startInlineEditing: function(todoId) {
-        TodoUI.startInlineEditing(todoId);
+        if (typeof TodoUI !== 'undefined' && typeof TodoUI.startInlineEditing === 'function') {
+            TodoUI.startInlineEditing(todoId);
+        }
     }
 };
 

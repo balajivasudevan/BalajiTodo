@@ -29,6 +29,11 @@ const TodoUI = {
         
         // Add todos to their projects (only non-archived todos)
         todos.filter(todo => !todo.archived).forEach(todo => {
+            // Check if this todo should be shown based on tag filters
+            if (activeTags && activeTags.size > 0 && !shouldShowTodoWithTags(todo)) {
+                return; // Skip this todo if it doesn't match tag filters
+            }
+            
             // Find the project this todo belongs to
             const project = projects.find(p => p.id === todo.projectId);
             
@@ -45,20 +50,56 @@ const TodoUI = {
             }
         });
         
-        // Sort projects with Inbox always first
+        // Sort projects with Inbox always first, then by order property
         const sortedProjects = Object.values(todosByProject).sort((a, b) => {
             if (a.project.id === 'inbox') return -1;
             if (b.project.id === 'inbox') return 1;
+            
+            // Sort by order property if available
+            const aOrder = a.project.order || Number.MAX_SAFE_INTEGER;
+            const bOrder = b.project.order || Number.MAX_SAFE_INTEGER;
+            if (aOrder !== bOrder) {
+                return aOrder - bOrder;
+            }
+            
+            // Fall back to alphabetical
             return a.project.name.localeCompare(b.project.name);
         });
         
         // Render each project section
         sortedProjects.forEach(({ project, todos }) => {
+            // Skip empty projects when filters are active
+            if (activeTags && activeTags.size > 0 && todos.length === 0) {
+                return;
+            }
+            
             const projectSection = document.createElement('div');
             projectSection.className = 'project-container';
+            projectSection.id = `project-section-${project.id}`;
             
             const projectHeader = document.createElement('div');
             projectHeader.className = 'card-header d-flex justify-content-between align-items-center mb-2 project-header';
+            
+            // Create left side of header with project info
+            const projectTitleSection = document.createElement('div');
+            projectTitleSection.className = 'd-flex align-items-center';
+            
+            // Add collapse/expand toggle
+            const collapseToggle = document.createElement('button');
+            collapseToggle.className = 'btn btn-sm btn-link text-decoration-none me-1 collapse-toggle';
+            
+            // Check if collapsedProjects is defined before using it
+            const isCollapsed = typeof collapsedProjects !== 'undefined' && collapsedProjects.has(project.id);
+            
+            collapseToggle.innerHTML = isCollapsed 
+                ? '<i class="bi bi-chevron-right"></i>' 
+                : '<i class="bi bi-chevron-down"></i>';
+            collapseToggle.title = isCollapsed ? 'Expand' : 'Collapse';
+            collapseToggle.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.toggleProjectCollapse(project.id);
+            };
             
             // Create a link to the project
             const projectTitle = document.createElement('h5');
@@ -70,25 +111,76 @@ const TodoUI = {
             `;
             
             // If project has notes, add a notes indicator
-            if (project.notes && project.notes.length > 0) {
+            if (project.notes && project.notes.length > 0 && typeof NotesUI !== 'undefined') {
                 const notesIndicator = document.createElement('button');
                 notesIndicator.className = 'btn btn-sm btn-outline-info ms-2';
                 notesIndicator.innerHTML = '<i class="bi bi-sticky"></i>';
                 notesIndicator.title = 'Project has notes';
                 notesIndicator.onclick = (e) => {
                     e.preventDefault();
-                    ProjectUI.openProjectNotesModal(project.id);
+                    if (typeof ProjectUI !== 'undefined') {
+                        ProjectUI.openProjectNotesModal(project.id);
+                    }
                 };
                 projectTitle.appendChild(notesIndicator);
             }
             
-            projectHeader.appendChild(projectTitle);
+            projectTitleSection.appendChild(collapseToggle);
+            projectTitleSection.appendChild(projectTitle);
+            
+            // Add project reordering buttons
+            const projectActionButtons = document.createElement('div');
+            projectActionButtons.className = 'project-actions';
+            
+            if (project.id !== 'inbox') {
+                // Move up button
+                const moveUpButton = document.createElement('button');
+                moveUpButton.className = 'btn btn-sm btn-outline-secondary me-1';
+                moveUpButton.innerHTML = '<i class="bi bi-arrow-up"></i>';
+                moveUpButton.title = 'Move Up';
+                moveUpButton.onclick = (e) => {
+                    e.preventDefault();
+                    
+                    // Find current position
+                    const currentIndex = sortedProjects.findIndex(p => p.project.id === project.id);
+                    if (currentIndex > 1) { // Skip moving if already at top (after Inbox)
+                        reorderProject(project.id, currentIndex - 1);
+                    }
+                };
+                
+                // Move down button
+                const moveDownButton = document.createElement('button');
+                moveDownButton.className = 'btn btn-sm btn-outline-secondary';
+                moveDownButton.innerHTML = '<i class="bi bi-arrow-down"></i>';
+                moveDownButton.title = 'Move Down';
+                moveDownButton.onclick = (e) => {
+                    e.preventDefault();
+                    
+                    // Find current position
+                    const currentIndex = sortedProjects.findIndex(p => p.project.id === project.id);
+                    if (currentIndex < sortedProjects.length - 1) { // Skip moving if already at bottom
+                        reorderProject(project.id, currentIndex + 1);
+                    }
+                };
+                
+                projectActionButtons.appendChild(moveUpButton);
+                projectActionButtons.appendChild(moveDownButton);
+            }
+            
+            projectHeader.appendChild(projectTitleSection);
+            projectHeader.appendChild(projectActionButtons);
             
             // Create dropzone for this project
             const dropzone = document.createElement('div');
             dropzone.className = 'dropzone';
             dropzone.id = `dropzone-${project.id}`;
             dropzone.setAttribute('data-project-id', project.id);
+            
+            // Apply collapse state
+            if (isCollapsed) {
+                dropzone.classList.add('collapsed');
+                dropzone.style.display = 'none';
+            }
             
             // Attach drag and drop events
             dropzone.addEventListener('dragover', (e) => {
@@ -124,7 +216,16 @@ const TodoUI = {
             
             // Add todo items to the project section
             if (todos.length === 0) {
-                dropzone.innerHTML = `<div class="empty-list-message">No tasks in this project. Drag tasks here or add new ones.</div>`;
+                const emptyMessage = document.createElement('div');
+                emptyMessage.className = 'empty-list-message';
+                
+                if (activeTags && activeTags.size > 0) {
+                    emptyMessage.textContent = 'No tasks with selected tags in this project.';
+                } else {
+                    emptyMessage.textContent = 'No tasks in this project. Drag tasks here or add new ones.';
+                }
+                
+                dropzone.appendChild(emptyMessage);
             } else {
                 todos.forEach(todo => {
                     const todoItem = this.createTodoItem(todo, project);
@@ -136,6 +237,44 @@ const TodoUI = {
             projectSection.appendChild(dropzone);
             todoProjectsContainer.appendChild(projectSection);
         });
+        
+        // If no projects are shown due to tag filters, show a message
+        if (activeTags && activeTags.size > 0 && todoProjectsContainer.children.length === 0) {
+            const emptyMessage = document.createElement('div');
+            emptyMessage.className = 'alert alert-info';
+            emptyMessage.innerHTML = '<i class="bi bi-info-circle me-2"></i>No tasks found with the selected tags.';
+            todoProjectsContainer.appendChild(emptyMessage);
+        }
+    },
+    
+    // Toggle project collapse state
+    toggleProjectCollapse: function(projectId) {
+        // Check if toggleProjectCollapse function exists before calling it
+        if (typeof toggleProjectCollapse !== 'function') {
+            console.error('toggleProjectCollapse function is not defined');
+            return;
+        }
+        
+        const isExpanded = toggleProjectCollapse(projectId);
+        const projectSection = document.getElementById(`project-section-${projectId}`);
+        if (!projectSection) return;
+        
+        const collapseToggle = projectSection.querySelector('.collapse-toggle');
+        const dropzone = document.getElementById(`dropzone-${projectId}`);
+        
+        if (isExpanded) {
+            // Project is now expanded
+            collapseToggle.innerHTML = '<i class="bi bi-chevron-down"></i>';
+            collapseToggle.title = 'Collapse';
+            dropzone.style.display = 'block';
+            dropzone.classList.remove('collapsed');
+        } else {
+            // Project is now collapsed
+            collapseToggle.innerHTML = '<i class="bi bi-chevron-right"></i>';
+            collapseToggle.title = 'Expand';
+            dropzone.style.display = 'none';
+            dropzone.classList.add('collapsed');
+        }
     },
 
     // Create a todo item element
@@ -186,7 +325,11 @@ const TodoUI = {
         // Todo text
         const textCol = document.createElement('div');
         textCol.className = 'todo-text';
-        textCol.textContent = todo.text;
+        
+        // Replace @tags with highlighted spans for display
+        const displayText = todo.text.replace(/(\B@[a-zA-Z0-9_-]+\b)/g, '<span class="tag-reference">$1</span>');
+        textCol.innerHTML = displayText;
+        
         if (todo.completed) {
             textCol.classList.add('completed');
         }
@@ -208,7 +351,9 @@ const TodoUI = {
         notesButton.innerHTML = '<i class="bi bi-sticky"></i>';
         notesButton.title = 'Add Notes';
         notesButton.addEventListener('click', () => {
-            NotesUI.openNotesModal(todo.id);
+            if (typeof NotesUI !== 'undefined') {
+                NotesUI.openNotesModal(todo.id);
+            }
         });
         
         actionCol.appendChild(notesButton);
@@ -242,10 +387,19 @@ const TodoUI = {
         row.appendChild(actionCol);
         
         cardBody.appendChild(row);
+        
+        // Add tag pills if the todo has tags
+        if (todo.tags && todo.tags.length > 0 && typeof TagUI !== 'undefined') {
+            const tagPills = TagUI.createTagPills(todo.tags);
+            if (tagPills) {
+                cardBody.appendChild(tagPills);
+            }
+        }
+        
         todoElement.appendChild(cardBody);
         
         // Add notes preview if notes exist
-        if (NotesUI && todo.notes && todo.notes.length > 0) {
+        if (typeof NotesUI !== 'undefined' && todo.notes && todo.notes.length > 0) {
             NotesUI.addNotesIndicator(todoElement, todo);
         }
         

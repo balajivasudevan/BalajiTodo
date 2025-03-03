@@ -61,6 +61,22 @@ const KeyboardShortcuts = {
                                     <td>Focus on new task input</td>
                                 </tr>
                                 <tr>
+                                    <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd></td>
+                                    <td>Clear all tag filters</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd></td>
+                                    <td>Expand all projects</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd></td>
+                                    <td>Collapse all projects</td>
+                                </tr>
+                                <tr>
+                                    <td><kbd>@</kbd> + <kbd>text</kbd></td>
+                                    <td>Add a tag to your task</td>
+                                </tr>
+                                <tr>
                                     <td><kbd>Enter</kbd></td>
                                     <td>Add task (when focused on task input)</td>
                                 </tr>
@@ -78,6 +94,27 @@ const KeyboardShortcuts = {
                                 </tr>
                             </tbody>
                         </table>
+                        
+                        <h6 class="mt-4 mb-2">Project Management Tips</h6>
+                        <div class="card p-2 bg-light text-dark mb-3">
+                            <ul class="mb-0 ps-3 small">
+                                <li>Use <i class="bi bi-arrow-up"></i> and <i class="bi bi-arrow-down"></i> buttons to reorder projects</li>
+                                <li>Click the arrow <i class="bi bi-chevron-down"></i> next to a project name to collapse/expand it</li>
+                                <li>Use <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> to collapse all projects</li>
+                                <li>Use <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> to expand all projects</li>
+                                <li>Projects maintain their order between sessions</li>
+                            </ul>
+                        </div>
+                        
+                        <h6 class="mt-3 mb-2">Tag Tips</h6>
+                        <div class="card p-2 bg-light text-dark">
+                            <ul class="mb-0 ps-3 small">
+                                <li>Use <code>@tagname</code> in your task text to add tags</li>
+                                <li>Click on a tag pill to filter by that tag</li>
+                                <li>Click on tag filters at the top to toggle them</li>
+                                <li>Use <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd> to clear all tag filters</li>
+                            </ul>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
@@ -98,7 +135,13 @@ const KeyboardShortcuts = {
         const modal = document.getElementById('shortcuts-modal');
         if (!modal) return;
         
-        const bsModal = new bootstrap.Modal(modal);
-        bsModal.show();
+        // Use Bootstrap's Modal if available
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+        } else {
+            // Fallback to basic toggle
+            modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+        }
     }
 };
