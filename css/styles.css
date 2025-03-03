@@ -1,0 +1,185 @@
+/* Todo Items */
+.todo-item {
+  cursor: pointer;
+}
+.todo-text {
+  flex: 1;
+}
+.completed {
+  text-decoration: line-through;
+  color: #6c757d;
+}
+
+/* Project Styling */
+.project-container {
+  margin-bottom: 2rem;
+}
+.card-header {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+.project-header {
+  background-color: rgba(0, 0, 0, 0.08) !important; /* Darker background for project headers */
+}
+.project-color {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 8px;
+  border-radius: 3px;
+}
+.inbox-project {
+  border-left-color: #03DAC6;
+}
+
+/* Todo Cards */
+.todo-card {
+  margin-bottom: 0.5rem;
+  border-left: 4px solid transparent;
+}
+.todo-card.dragging {
+  opacity: 0.4;
+}
+
+/* Notes Styling */
+.notes-preview {
+  padding-left: 2.2rem;
+  padding-right: 2rem;
+  font-style: italic;
+  word-break: break-word;
+  border-top: 1px dotted #e0e0e0;
+  padding-top: 0.3rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.notes-preview i {
+  margin-right: 0.3rem;
+}
+
+/* Project Notes Styling */
+.project-notes-section {
+  background-color: rgba(0, 0, 0, 0.03);
+  color: #6c757d;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.project-notes-content {
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+/* Archived Projects */
+.archived-project {
+  background-color: rgba(0, 0, 0, 0.03);
+  opacity: 0.75;
+  border-left: 4px solid;
+}
+
+.archived-project .project-name {
+  color: #6c757d;
+}
+
+/* Project inline editing */
+.project-name {
+  font-weight: 500;
+}
+
+/* Improved drag & drop effects */
+.dropzone {
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+/* Archive Section */
+#archive-container {
+  background-color: #f8f9fa;
+  border-radius: 0.25rem;
+  margin-top: 1.5rem;
+  padding: 0.5rem;
+}
+.archive-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.archived-todo {
+  background-color: #f8f9fa;
+  opacity: 0.85;
+}
+.archived-todo .todo-text {
+  color: #6c757d;
+}
+.archive-todos {
+  padding-left: 1rem;
+  margin-bottom: 1rem;
+}
+#archive-content {
+  transition: all 0.3s ease;
+}
+
+/* Archive Section Improvements */
+.archived-projects {
+  margin-bottom: 1.5rem;
+}
+
+/* Icons in headers */
+.card-header i.bi {
+  opacity: 0.8;
+}
+
+/* Drag and Drop */
+.dropzone {
+  min-height: 60px;
+  border: 2px dashed #dee2e6;
+  border-radius: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+}
+.dropzone.drag-over {
+  background-color: rgba(0, 123, 255, 0.1);
+  border-color: #007bff;
+}
+
+/* Inline Editing */
+.edit-form {
+  display: flex;
+  margin-bottom: 0;
+}
+.edit-input {
+  flex: 1;
+}
+.inline-edit-input {
+  border: none;
+  border-bottom: 1px solid #ced4da;
+  background-color: rgba(0, 123, 255, 0.05);
+  padding: 0.25rem;
+}
+.inline-edit-input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+/* Project Badges */
+.project-badge {
+  font-size: 0.75rem;
+}
+
+/* Messages and Status */
+.auto-save-status {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+.empty-list-message {
+  color: #6c757d;
+  font-style: italic;
+  padding: 1rem;
+  text-align: center;
+}
+
+/* Buttons */
+.action-buttons button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
