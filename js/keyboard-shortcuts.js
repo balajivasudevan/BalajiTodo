@@ -2,13 +2,14 @@
  * keyboard-shortcuts.js - Handles displaying and managing keyboard shortcuts
  */
 
-// KeyboardShortcuts module
-const KeyboardShortcuts = {
+// Define KeyboardShortcuts module directly in the global scope
+window.KeyboardShortcuts = {
     elements: null,
     isShortcutsVisible: false,
     
     // Initialize module
     init: function(elements) {
+        console.log('KeyboardShortcuts.init called');
         this.elements = elements;
         this.createShortcutsButton();
         this.createShortcutsModal();
@@ -133,7 +134,10 @@ const KeyboardShortcuts = {
     // Show/hide the keyboard shortcuts modal
     toggleShortcutsModal: function() {
         const modal = document.getElementById('shortcuts-modal');
-        if (!modal) return;
+        if (!modal) {
+            console.error('KeyboardShortcuts: Shortcuts modal not found');
+            return;
+        }
         
         // Use Bootstrap's Modal if available
         if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
@@ -145,3 +149,5 @@ const KeyboardShortcuts = {
         }
     }
 };
+
+console.log('KeyboardShortcuts module defined in global scope');

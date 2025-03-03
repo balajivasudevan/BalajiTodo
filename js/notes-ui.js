@@ -2,12 +2,13 @@
  * notes-ui.js - Handles UI operations related to todo notes
  */
 
-// NotesUI module
-const NotesUI = {
+// Define NotesUI module directly in the global scope
+window.NotesUI = {
     elements: null,
     
     // Initialize with UI elements
     init: function(elements) {
+        console.log('NotesUI.init called');
         this.elements = elements;
         this.createNotesModal();
     },
@@ -59,49 +60,114 @@ const NotesUI = {
         document.body.appendChild(modalContainer);
         
         // Add event listener for save button
-        document.getElementById('save-notes-btn').addEventListener('click', this.saveNotes.bind(this));
+        const saveButton = document.getElementById('save-notes-btn');
+        if (saveButton) {
+            saveButton.addEventListener('click', this.saveNotes.bind(this));
+        }
     },
     
     // Open notes modal for a specific todo
     openNotesModal: function(todoId) {
-        const todo = todos.find(t => t.id === todoId);
-        if (!todo) return;
+        if (typeof window.todos === 'undefined' || !Array.isArray(window.todos)) {
+            console.error('NotesUI: Cannot open notes modal, todos array not defined');
+            return;
+        }
+        
+        const todo = window.todos.find(t => t.id === todoId);
+        if (!todo) {
+            console.error(`NotesUI: Todo with ID ${todoId} not found`);
+            return;
+        }
+        
+        // Get or create the modal
+        let modal = document.getElementById('notes-modal');
+        if (!modal) {
+            this.createNotesModal();
+            modal = document.getElementById('notes-modal');
+            if (!modal) {
+                console.error('NotesUI: Failed to create notes modal');
+                return;
+            }
+        }
         
         // Set current todo ID as a data attribute on the modal
-        const modal = document.getElementById('notes-modal');
         modal.setAttribute('data-todo-id', todoId);
         
         // Set task title
-        document.getElementById('task-title').textContent = todo.text;
+        const titleElement = document.getElementById('task-title');
+        if (titleElement) {
+            titleElement.textContent = todo.text;
+        }
         
         // Set existing notes if any
-        document.getElementById('task-notes').value = todo.notes || '';
+        const notesTextarea = document.getElementById('task-notes');
+        if (notesTextarea) {
+            notesTextarea.value = todo.notes || '';
+        }
         
-        // Show the modal
-        const bsModal = new bootstrap.Modal(modal);
-        bsModal.show();
-        
-        // Focus the textarea
-        setTimeout(() => {
-            document.getElementById('task-notes').focus();
-        }, 300);
+        // Show the modal using Bootstrap
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            
+            // Focus the textarea
+            setTimeout(() => {
+                if (notesTextarea) notesTextarea.focus();
+            }, 300);
+        } else {
+            // Fallback to show the modal manually
+            modal.style.display = 'block';
+            if (notesTextarea) notesTextarea.focus();
+        }
     },
     
     // Save notes from modal to todo
     saveNotes: function() {
         const modal = document.getElementById('notes-modal');
+        if (!modal) {
+            console.error('NotesUI: Notes modal not found');
+            return;
+        }
+        
         const todoId = modal.getAttribute('data-todo-id');
-        const notesText = document.getElementById('task-notes').value.trim();
+        if (!todoId) {
+            console.error('NotesUI: No todo ID found in modal');
+            return;
+        }
+        
+        const notesTextarea = document.getElementById('task-notes');
+        if (!notesTextarea) {
+            console.error('NotesUI: Notes textarea not found');
+            return;
+        }
+        
+        const notesText = notesTextarea.value.trim();
         
         // Update the todo notes
-        updateTodoNotes(todoId, notesText);
+        if (typeof window.updateTodoNotes === 'function') {
+            window.updateTodoNotes(todoId, notesText);
+        } else {
+            console.error('NotesUI: updateTodoNotes function is not defined');
+            return;
+        }
         
-        // Close the modal
-        const bsModal = bootstrap.Modal.getInstance(modal);
-        bsModal.hide();
+        // Close the modal using Bootstrap
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) bsModal.hide();
+        } else {
+            // Fallback to hide manually
+            modal.style.display = 'none';
+        }
         
         // Show confirmation
-        UI.showStatusMessage('Notes saved successfully!', 'success');
+        if (typeof window.UI !== 'undefined' && typeof window.UI.showStatusMessage === 'function') {
+            window.UI.showStatusMessage('Notes saved successfully!', 'success');
+        } else if (typeof window.StatusUI !== 'undefined' && typeof window.StatusUI.showMessage === 'function') {
+            window.StatusUI.showMessage('Notes saved successfully!', 'success');
+        } else {
+            console.log('NotesUI: Notes saved successfully!');
+        }
     },
     
     // Get a preview of notes for display in the todo card
@@ -117,6 +183,8 @@ const NotesUI = {
     
     // Add notes indicator to a todo element
     addNotesIndicator: function(todoElement, todo) {
+        if (!todoElement || !todo || !todo.notes) return;
+        
         // Find or create notes indicator area
         let notesArea = todoElement.querySelector('.notes-preview');
         
@@ -137,7 +205,11 @@ const NotesUI = {
             const cardBody = todoElement.querySelector('.card-body');
             const mainRow = todoElement.querySelector('.d-flex');
             
-            cardBody.insertBefore(notesArea, mainRow.nextSibling);
+            if (cardBody && mainRow) {
+                cardBody.insertBefore(notesArea, mainRow.nextSibling);
+            } else if (cardBody) {
+                cardBody.appendChild(notesArea);
+            }
         }
         
         // Set the notes preview content
@@ -145,3 +217,5 @@ const NotesUI = {
         notesArea.innerHTML = `<i class="bi bi-sticky"></i> ${preview}`;
     }
 };
+
+console.log('NotesUI module defined in global scope');

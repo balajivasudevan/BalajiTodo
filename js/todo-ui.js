@@ -2,25 +2,52 @@
  * todo-ui.js - Handles UI operations related to todos
  */
 
-// TodoUI module
-const TodoUI = {
+// Define TodoUI module directly in the global scope
+window.TodoUI = {
     elements: null,
     
     // Initialize with UI elements
     init: function(elements) {
+        console.log('TodoUI.init called');
         this.elements = elements;
+        
+        if (!elements || !elements.todoProjectsContainer) {
+            console.error('TodoUI initialization failed: required elements missing');
+        } else {
+            console.log('TodoUI initialized successfully');
+        }
     },
     
     // Render todos grouped by project
     renderByProject: function() {
-        const todoProjectsContainer = this.elements.todoProjectsContainer;
+        console.log('TodoUI.renderByProject called');
+        const todoProjectsContainer = this.elements?.todoProjectsContainer;
+        
+        if (!todoProjectsContainer) {
+            console.error('TodoUI: Cannot render, todoProjectsContainer not found');
+            return;
+        }
+        
+        // Check if todos and projects are defined
+        if (typeof window.todos === 'undefined' || !Array.isArray(window.todos)) {
+            console.error('TodoUI: Cannot render, todos not defined');
+            todoProjectsContainer.innerHTML = '<div class="alert alert-danger">Error: todos data is missing</div>';
+            return;
+        }
+        
+        if (typeof window.projects === 'undefined' || !Array.isArray(window.projects)) {
+            console.error('TodoUI: Cannot render, projects not defined');
+            todoProjectsContainer.innerHTML = '<div class="alert alert-danger">Error: projects data is missing</div>';
+            return;
+        }
+        
         todoProjectsContainer.innerHTML = '';
         
         // Group todos by project
         const todosByProject = {};
         
         // Initialize with all active projects (non-archived ones)
-        projects.filter(p => !p.archived).forEach(project => {
+        window.projects.filter(p => !p.archived).forEach(project => {
             todosByProject[project.id] = {
                 project: project,
                 todos: []
@@ -28,21 +55,22 @@ const TodoUI = {
         });
         
         // Add todos to their projects (only non-archived todos)
-        todos.filter(todo => !todo.archived).forEach(todo => {
+        window.todos.filter(todo => !todo.archived).forEach(todo => {
             // Check if this todo should be shown based on tag filters
-            if (activeTags && activeTags.size > 0 && !shouldShowTodoWithTags(todo)) {
+            if (typeof window.activeTags !== 'undefined' && window.activeTags.size > 0 && 
+                typeof window.shouldShowTodoWithTags === 'function' && !window.shouldShowTodoWithTags(todo)) {
                 return; // Skip this todo if it doesn't match tag filters
             }
             
             // Find the project this todo belongs to
-            const project = projects.find(p => p.id === todo.projectId);
+            const project = window.projects.find(p => p.id === todo.projectId);
             
             // If project exists and is not archived, add todo to its group
             if (project && !project.archived && todosByProject[todo.projectId]) {
                 todosByProject[todo.projectId].todos.push(todo);
             } else {
                 // If project doesn't exist or is archived, move todo to Inbox
-                const inboxProject = projects.find(p => p.id === 'inbox');
+                const inboxProject = window.projects.find(p => p.id === 'inbox');
                 if (inboxProject) {
                     todo.projectId = inboxProject.id;
                     todosByProject[inboxProject.id].todos.push(todo);
@@ -69,7 +97,7 @@ const TodoUI = {
         // Render each project section
         sortedProjects.forEach(({ project, todos }) => {
             // Skip empty projects when filters are active
-            if (activeTags && activeTags.size > 0 && todos.length === 0) {
+            if (typeof window.activeTags !== 'undefined' && window.activeTags.size > 0 && todos.length === 0) {
                 return;
             }
             
@@ -89,7 +117,7 @@ const TodoUI = {
             collapseToggle.className = 'btn btn-sm btn-link text-decoration-none me-1 collapse-toggle';
             
             // Check if collapsedProjects is defined before using it
-            const isCollapsed = typeof collapsedProjects !== 'undefined' && collapsedProjects.has(project.id);
+            const isCollapsed = typeof window.collapsedProjects !== 'undefined' && window.collapsedProjects.has(project.id);
             
             collapseToggle.innerHTML = isCollapsed 
                 ? '<i class="bi bi-chevron-right"></i>' 
@@ -101,7 +129,7 @@ const TodoUI = {
                 this.toggleProjectCollapse(project.id);
             };
             
-            // Create a link to the project
+            // Create project title
             const projectTitle = document.createElement('h5');
             projectTitle.className = 'mb-0 d-flex align-items-center';
             projectTitle.innerHTML = `
@@ -109,21 +137,6 @@ const TodoUI = {
                 ${project.name} 
                 <span class="badge bg-secondary rounded-pill ms-2">${todos.length}</span>
             `;
-            
-            // If project has notes, add a notes indicator
-            if (project.notes && project.notes.length > 0 && typeof NotesUI !== 'undefined') {
-                const notesIndicator = document.createElement('button');
-                notesIndicator.className = 'btn btn-sm btn-outline-info ms-2';
-                notesIndicator.innerHTML = '<i class="bi bi-sticky"></i>';
-                notesIndicator.title = 'Project has notes';
-                notesIndicator.onclick = (e) => {
-                    e.preventDefault();
-                    if (typeof ProjectUI !== 'undefined') {
-                        ProjectUI.openProjectNotesModal(project.id);
-                    }
-                };
-                projectTitle.appendChild(notesIndicator);
-            }
             
             projectTitleSection.appendChild(collapseToggle);
             projectTitleSection.appendChild(projectTitle);
@@ -144,7 +157,11 @@ const TodoUI = {
                     // Find current position
                     const currentIndex = sortedProjects.findIndex(p => p.project.id === project.id);
                     if (currentIndex > 1) { // Skip moving if already at top (after Inbox)
-                        reorderProject(project.id, currentIndex - 1);
+                        if (typeof window.reorderProject === 'function') {
+                            window.reorderProject(project.id, currentIndex - 1);
+                        } else {
+                            console.error('reorderProject function is not defined');
+                        }
                     }
                 };
                 
@@ -159,7 +176,11 @@ const TodoUI = {
                     // Find current position
                     const currentIndex = sortedProjects.findIndex(p => p.project.id === project.id);
                     if (currentIndex < sortedProjects.length - 1) { // Skip moving if already at bottom
-                        reorderProject(project.id, currentIndex + 1);
+                        if (typeof window.reorderProject === 'function') {
+                            window.reorderProject(project.id, currentIndex + 1);
+                        } else {
+                            console.error('reorderProject function is not defined');
+                        }
                     }
                 };
                 
@@ -210,7 +231,11 @@ const TodoUI = {
                     this.handleTodoReordering(todoId, project.id, e.clientY);
                 } else {
                     // Move to another project
-                    moveTodoToProject(todoId, project.id);
+                    if (typeof window.moveTodoToProject === 'function') {
+                        window.moveTodoToProject(todoId, project.id);
+                    } else {
+                        console.error('moveTodoToProject function is not defined');
+                    }
                 }
             });
             
@@ -219,7 +244,7 @@ const TodoUI = {
                 const emptyMessage = document.createElement('div');
                 emptyMessage.className = 'empty-list-message';
                 
-                if (activeTags && activeTags.size > 0) {
+                if (typeof window.activeTags !== 'undefined' && window.activeTags.size > 0) {
                     emptyMessage.textContent = 'No tasks with selected tags in this project.';
                 } else {
                     emptyMessage.textContent = 'No tasks in this project. Drag tasks here or add new ones.';
@@ -239,7 +264,7 @@ const TodoUI = {
         });
         
         // If no projects are shown due to tag filters, show a message
-        if (activeTags && activeTags.size > 0 && todoProjectsContainer.children.length === 0) {
+        if (typeof window.activeTags !== 'undefined' && window.activeTags.size > 0 && todoProjectsContainer.children.length === 0) {
             const emptyMessage = document.createElement('div');
             emptyMessage.className = 'alert alert-info';
             emptyMessage.innerHTML = '<i class="bi bi-info-circle me-2"></i>No tasks found with the selected tags.';
@@ -250,12 +275,12 @@ const TodoUI = {
     // Toggle project collapse state
     toggleProjectCollapse: function(projectId) {
         // Check if toggleProjectCollapse function exists before calling it
-        if (typeof toggleProjectCollapse !== 'function') {
+        if (typeof window.toggleProjectCollapse !== 'function') {
             console.error('toggleProjectCollapse function is not defined');
             return;
         }
         
-        const isExpanded = toggleProjectCollapse(projectId);
+        const isExpanded = window.toggleProjectCollapse(projectId);
         const projectSection = document.getElementById(`project-section-${projectId}`);
         if (!projectSection) return;
         
@@ -319,7 +344,13 @@ const TodoUI = {
         checkbox.type = 'checkbox';
         checkbox.className = 'form-check-input';
         checkbox.checked = todo.completed;
-        checkbox.addEventListener('change', () => toggleComplete(todo.id));
+        checkbox.addEventListener('change', () => {
+            if (typeof window.toggleComplete === 'function') {
+                window.toggleComplete(todo.id);
+            } else {
+                console.error('toggleComplete function is not defined');
+            }
+        });
         checkboxCol.appendChild(checkbox);
         
         // Todo text
@@ -336,7 +367,7 @@ const TodoUI = {
         
         // Double-click to edit
         textCol.addEventListener('dblclick', () => {
-            if (!editingTodoId) {
+            if (typeof window.editingTodoId === 'undefined' || !window.editingTodoId) {
                 this.startInlineEditing(todo.id);
             }
         });
@@ -351,8 +382,10 @@ const TodoUI = {
         notesButton.innerHTML = '<i class="bi bi-sticky"></i>';
         notesButton.title = 'Add Notes';
         notesButton.addEventListener('click', () => {
-            if (typeof NotesUI !== 'undefined') {
-                NotesUI.openNotesModal(todo.id);
+            if (typeof window.NotesUI !== 'undefined' && typeof window.NotesUI.openNotesModal === 'function') {
+                window.NotesUI.openNotesModal(todo.id);
+            } else {
+                console.error('NotesUI is not defined or openNotesModal function is missing');
             }
         });
         
@@ -365,7 +398,11 @@ const TodoUI = {
             archiveButton.innerHTML = '<i class="bi bi-archive"></i>';
             archiveButton.title = 'Archive';
             archiveButton.addEventListener('click', () => {
-                archiveTodo(todo.id);
+                if (typeof window.archiveTodo === 'function') {
+                    window.archiveTodo(todo.id);
+                } else {
+                    console.error('archiveTodo function is not defined');
+                }
             });
             
             actionCol.appendChild(archiveButton);
@@ -376,7 +413,11 @@ const TodoUI = {
         deleteButton.innerHTML = '<i class="bi bi-trash"></i>';
         deleteButton.addEventListener('click', () => {
             if (confirm('Are you sure you want to delete this task?')) {
-                deleteTodo(todo.id);
+                if (typeof window.deleteTodo === 'function') {
+                    window.deleteTodo(todo.id);
+                } else {
+                    console.error('deleteTodo function is not defined');
+                }
             }
         });
         
@@ -389,18 +430,22 @@ const TodoUI = {
         cardBody.appendChild(row);
         
         // Add tag pills if the todo has tags
-        if (todo.tags && todo.tags.length > 0 && typeof TagUI !== 'undefined') {
-            const tagPills = TagUI.createTagPills(todo.tags);
-            if (tagPills) {
-                cardBody.appendChild(tagPills);
+        if (todo.tags && todo.tags.length > 0 && typeof window.TagUI !== 'undefined') {
+            if (typeof window.TagUI.createTagPills === 'function') {
+                const tagPills = window.TagUI.createTagPills(todo.tags);
+                if (tagPills) {
+                    cardBody.appendChild(tagPills);
+                }
             }
         }
         
         todoElement.appendChild(cardBody);
         
         // Add notes preview if notes exist
-        if (typeof NotesUI !== 'undefined' && todo.notes && todo.notes.length > 0) {
-            NotesUI.addNotesIndicator(todoElement, todo);
+        if (typeof window.NotesUI !== 'undefined' && 
+            typeof window.NotesUI.addNotesIndicator === 'function' && 
+            todo.notes && todo.notes.length > 0) {
+            window.NotesUI.addNotesIndicator(todoElement, todo);
         }
         
         return todoElement;
@@ -409,10 +454,15 @@ const TodoUI = {
     // Handle todo reordering within a project
     handleTodoReordering: function(todoId, projectId, dropY) {
         // Get all todos in this project
-        const projectTodos = todos.filter(t => t.projectId === projectId);
+        const projectTodos = window.todos.filter(t => t.projectId === projectId);
         
         // Get all todo elements in this project's dropzone
         const dropzone = document.getElementById(`dropzone-${projectId}`);
+        if (!dropzone) {
+            console.error(`Dropzone for project ${projectId} not found`);
+            return;
+        }
+        
         const todoElements = dropzone.querySelectorAll('.todo-card');
         
         // Find position to insert the todo
@@ -432,33 +482,51 @@ const TodoUI = {
         }
         
         // Get the todo being moved
-        const todo = todos.find(t => t.id === todoId);
-        if (!todo) return;
+        const todo = window.todos.find(t => t.id === todoId);
+        if (!todo) {
+            console.error(`Todo with ID ${todoId} not found`);
+            return;
+        }
         
         // Remove todo from the array
-        todos = todos.filter(t => t.id !== todoId);
+        const updatedTodos = window.todos.filter(t => t.id !== todoId);
         
         // Find where to insert it
-        const firstTodos = todos.filter(t => t.projectId !== projectId);
-        const projectTodosWithoutMovedItem = todos.filter(t => t.projectId === projectId);
+        const firstTodos = updatedTodos.filter(t => t.projectId !== projectId);
+        const projectTodosWithoutMovedItem = updatedTodos.filter(t => t.projectId === projectId);
         
         // Insert at the correct position in the project todos
         projectTodosWithoutMovedItem.splice(insertPosition, 0, todo);
         
         // Rebuild todos array
-        todos = [...firstTodos, ...projectTodosWithoutMovedItem];
+        window.todos = [...firstTodos, ...projectTodosWithoutMovedItem];
         
         // Save changes
-        saveChanges();
+        if (typeof window.saveChanges === 'function') {
+            window.saveChanges();
+        } else {
+            console.error('saveChanges function is not defined');
+        }
+        
+        // Re-render todos
         this.renderByProject();
     },
     
     // Start inline editing
     startInlineEditing: function(todoId) {
-        editingTodoId = todoId;
-        const todo = todos.find(t => t.id === todoId);
+        // Set the global editing flag if it exists
+        if (typeof window.editingTodoId !== 'undefined') {
+            window.editingTodoId = todoId;
+        }
+        
+        const todo = window.todos.find(t => t.id === todoId);
+        if (!todo) return;
+        
         const todoElement = document.getElementById(`todo-${todoId}`);
+        if (!todoElement) return;
+        
         const todoTextElement = todoElement.querySelector('.todo-text');
+        if (!todoTextElement) return;
         
         // Store the original text
         const originalText = todo.text;
@@ -480,12 +548,22 @@ const TodoUI = {
         const saveEdit = () => {
             const newText = inputField.value.trim();
             if (newText) {
-                editTodo(todoId, newText);
+                if (typeof window.editTodo === 'function') {
+                    window.editTodo(todoId, newText);
+                } else {
+                    console.error('editTodo function is not defined');
+                    // Fallback to just restoring the original
+                    todoTextElement.textContent = originalText;
+                }
             } else {
                 // If empty, restore original
                 todoTextElement.textContent = originalText;
             }
-            editingTodoId = null;
+            
+            // Clear editing state
+            if (typeof window.editingTodoId !== 'undefined') {
+                window.editingTodoId = null;
+            }
         };
         
         // Handle saving on enter, canceling on escape
@@ -496,16 +574,21 @@ const TodoUI = {
             } else if (e.key === 'Escape') {
                 e.preventDefault();
                 todoTextElement.textContent = originalText;
-                editingTodoId = null;
+                if (typeof window.editingTodoId !== 'undefined') {
+                    window.editingTodoId = null;
+                }
             }
         });
         
         // Handle clicking outside
         document.addEventListener('click', function handleClickOutside(event) {
-            if (editingTodoId === todoId && !inputField.contains(event.target)) {
+            if ((typeof window.editingTodoId !== 'undefined' && window.editingTodoId === todoId) && 
+                !inputField.contains(event.target)) {
                 saveEdit();
                 document.removeEventListener('click', handleClickOutside);
             }
         });
     }
 };
+
+console.log('TodoUI module defined in global scope');

@@ -2,25 +2,33 @@
  * archive-ui.js - Handles UI operations related to archived todos and projects
  */
 
-// ArchiveUI module
-const ArchiveUI = {
+// Define ArchiveUI module directly in the global scope
+window.ArchiveUI = {
     elements: null,
     isArchiveExpanded: false,
     
     // Initialize with UI elements
     init: function(elements) {
+        console.log('ArchiveUI.init called');
         this.elements = elements;
         
-        // Create archive container if it doesn't exist yet
-        if (!document.getElementById('archive-container')) {
-            this.createArchiveContainer();
-        }
+        // Create archive container
+        this.createArchiveContainer();
+        
+        // Update archive badge
+        this.updateArchiveBadge();
     },
     
     // Create the archive container in the DOM
     createArchiveContainer: function() {
-        const todoProjectsContainer = this.elements.todoProjectsContainer;
+        const todoProjectsContainer = this.elements?.todoProjectsContainer;
+        if (!todoProjectsContainer) {
+            console.error('ArchiveUI: Cannot create archive container, todoProjectsContainer not found');
+            return;
+        }
+        
         const parentElement = todoProjectsContainer.parentNode;
+        if (!parentElement) return;
         
         // Create main archive container
         const archiveContainer = document.createElement('div');
@@ -62,15 +70,14 @@ const ArchiveUI = {
         
         // Add the archive container to the page
         parentElement.appendChild(archiveContainer);
-        
-        // Update the badge to show/hide based on archived item count
-        this.updateArchiveBadge();
     },
     
     // Toggle archive section visibility
     toggleArchiveSection: function() {
         const archiveContent = document.getElementById('archive-content');
         const toggleButton = document.getElementById('archive-toggle-button');
+        
+        if (!archiveContent || !toggleButton) return;
         
         // Toggle visibility
         if (this.isArchiveExpanded) {
@@ -93,13 +100,22 @@ const ArchiveUI = {
     // Render archived todos grouped by project
     renderArchivedTodos: function() {
         const archiveContent = document.getElementById('archive-content');
+        if (!archiveContent) return;
+        
         archiveContent.innerHTML = '';
         
+        // Check if todos and projects arrays exist
+        if (typeof window.todos === 'undefined' || !Array.isArray(window.todos) ||
+            typeof window.projects === 'undefined' || !Array.isArray(window.projects)) {
+            archiveContent.innerHTML = '<div class="alert alert-warning">No archived items found</div>';
+            return;
+        }
+        
         // Get all archived todos
-        const archivedTodos = todos.filter(todo => todo.archived);
+        const archivedTodos = window.todos.filter(todo => todo.archived);
         
         // Get all archived projects
-        const archivedProjects = projects.filter(project => project.archived);
+        const archivedProjects = window.projects.filter(project => project.archived);
         
         // Check if there are any archived items
         if (archivedTodos.length === 0 && archivedProjects.length === 0) {
@@ -110,7 +126,7 @@ const ArchiveUI = {
             return;
         }
         
-        // Create section for archived projects if any
+        // Show archived projects if any exist
         if (archivedProjects.length > 0) {
             const archivedProjectsSection = document.createElement('div');
             archivedProjectsSection.className = 'archived-projects mb-4';
@@ -127,41 +143,20 @@ const ArchiveUI = {
             
             archivedProjectsSection.appendChild(projectsHeader);
             
-            // Render each archived project
-            archivedProjects.forEach(project => {
-                const projectItem = this.createArchivedProjectItem(project);
-                archivedProjectsSection.appendChild(projectItem);
-            });
+            // Simple message for archived projects
+            const projectsMessage = document.createElement('div');
+            projectsMessage.className = 'alert alert-light';
+            projectsMessage.textContent = `${archivedProjects.length} archived projects.`;
+            archivedProjectsSection.appendChild(projectsMessage);
             
             archiveContent.appendChild(archivedProjectsSection);
         }
         
-        // Group todos by project
-        const todosByProject = {};
-        
-        // Get unique projects that have archived todos
-        const projectIds = [...new Set(archivedTodos.map(todo => todo.projectId))];
-        
-        // Initialize project groups
-        projectIds.forEach(projectId => {
-            const project = projects.find(p => p.id === projectId);
-            if (project) {
-                todosByProject[projectId] = {
-                    project: project,
-                    todos: []
-                };
-            }
-        });
-        
-        // Add todos to their projects
-        archivedTodos.forEach(todo => {
-            if (todo.projectId && todosByProject[todo.projectId]) {
-                todosByProject[todo.projectId].todos.push(todo);
-            }
-        });
-        
-        // If there are archived todos, add a header
+        // Show archived todos if any exist
         if (archivedTodos.length > 0) {
+            const archivedTodosSection = document.createElement('div');
+            archivedTodosSection.className = 'archived-todos mb-4';
+            
             const todosHeader = document.createElement('div');
             todosHeader.className = 'card-header d-flex justify-content-between align-items-center mb-2 project-header';
             todosHeader.innerHTML = `
@@ -172,131 +167,16 @@ const ArchiveUI = {
                 </h6>
             `;
             
-            archiveContent.appendChild(todosHeader);
+            archivedTodosSection.appendChild(todosHeader);
+            
+            // Simple message for archived todos
+            const todosMessage = document.createElement('div');
+            todosMessage.className = 'alert alert-light';
+            todosMessage.textContent = `${archivedTodos.length} archived todos.`;
+            archivedTodosSection.appendChild(todosMessage);
+            
+            archiveContent.appendChild(archivedTodosSection);
         }
-        
-        // Sort projects with Inbox always first
-        const sortedProjects = Object.values(todosByProject).sort((a, b) => {
-            if (a.project.id === 'inbox') return -1;
-            if (b.project.id === 'inbox') return 1;
-            return a.project.name.localeCompare(b.project.name);
-        });
-        
-        // Render each project section
-        sortedProjects.forEach(({ project, todos }) => {
-            const projectSection = document.createElement('div');
-            projectSection.className = 'project-container';
-            
-            // Create project header
-            const projectHeader = document.createElement('div');
-            projectHeader.className = 'card-header d-flex justify-content-between align-items-center mb-2 project-header';
-            projectHeader.innerHTML = `
-                <h6 class="mb-0">
-                    <span class="project-color" style="background-color: ${project.color}"></span>
-                    ${project.name} 
-                    <span class="badge bg-secondary rounded-pill ms-2">${todos.length}</span>
-                </h6>
-            `;
-            
-            // Create todos container
-            const todosContainer = document.createElement('div');
-            todosContainer.className = 'archive-todos';
-            
-            // Add each todo
-            todos.forEach(todo => {
-                const todoItem = this.createArchivedTodoItem(todo, project);
-                todosContainer.appendChild(todoItem);
-            });
-            
-            // Assemble project section
-            projectSection.appendChild(projectHeader);
-            projectSection.appendChild(todosContainer);
-            
-            // Add to archive content
-            archiveContent.appendChild(projectSection);
-        });
-    },
-    
-    // Create an archived project item
-    createArchivedProjectItem: function(project) {
-        const projectItem = document.createElement('div');
-        projectItem.className = 'card mb-2 archived-project';
-        projectItem.id = `archived-project-${project.id}`;
-        projectItem.style.borderLeftColor = project.color;
-        
-        const cardBody = document.createElement('div');
-        cardBody.className = 'card-body p-2';
-        
-        const row = document.createElement('div');
-        row.className = 'd-flex align-items-center';
-        
-        // Project info
-        const projectInfo = document.createElement('div');
-        projectInfo.className = 'd-flex align-items-center flex-grow-1';
-        
-        const colorIndicator = document.createElement('span');
-        colorIndicator.className = 'project-color';
-        colorIndicator.style.backgroundColor = project.color;
-        
-        const projectName = document.createElement('span');
-        projectName.className = 'project-name';
-        projectName.textContent = project.name;
-        
-        projectInfo.appendChild(colorIndicator);
-        projectInfo.appendChild(projectName);
-        
-        // Action buttons
-        const actionButtons = document.createElement('div');
-        actionButtons.className = 'action-buttons ms-auto';
-        
-        // Notes button
-        const notesButton = document.createElement('button');
-        notesButton.className = 'btn btn-sm btn-outline-info me-1';
-        notesButton.innerHTML = '<i class="bi bi-sticky"></i>';
-        notesButton.title = 'View Project Notes';
-        notesButton.onclick = () => {
-            ProjectUI.openProjectNotesModal(project.id);
-        };
-        
-        // Unarchive button
-        const unarchiveButton = document.createElement('button');
-        unarchiveButton.className = 'btn btn-sm btn-outline-primary me-1';
-        unarchiveButton.innerHTML = '<i class="bi bi-arrow-up-square"></i>';
-        unarchiveButton.title = 'Unarchive Project';
-        unarchiveButton.addEventListener('click', () => {
-            unarchiveProject(project.id);
-        });
-        
-        // Delete button
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'btn btn-sm btn-outline-danger';
-        deleteButton.innerHTML = '<i class="bi bi-trash"></i>';
-        deleteButton.title = 'Delete Project';
-        deleteButton.addEventListener('click', () => {
-            if (confirm(`Are you sure you want to delete "${project.name}" project? Tasks will be moved to Inbox.`)) {
-                deleteProject(project.id);
-            }
-        });
-        
-        actionButtons.appendChild(notesButton);
-        actionButtons.appendChild(unarchiveButton);
-        actionButtons.appendChild(deleteButton);
-        
-        row.appendChild(projectInfo);
-        row.appendChild(actionButtons);
-        
-        cardBody.appendChild(row);
-        
-        // Add notes preview if any
-        if (project.notes && project.notes.length > 0) {
-            const notesPreview = document.createElement('div');
-            notesPreview.className = 'notes-preview mt-1 small';
-            notesPreview.innerHTML = `<i class="bi bi-sticky"></i> ${project.notes.length > 50 ? project.notes.substring(0, 50) + '...' : project.notes}`;
-            cardBody.appendChild(notesPreview);
-        }
-        
-        projectItem.appendChild(cardBody);
-        return projectItem;
     },
     
     // Update archive visibility badge
@@ -308,8 +188,12 @@ const ArchiveUI = {
         if (!titleElement) return;
         
         // Count archived items
-        const archivedTodoCount = todos.filter(todo => todo.archived).length;
-        const archivedProjectCount = projects.filter(project => project.archived).length;
+        const archivedTodoCount = typeof window.todos !== 'undefined' && Array.isArray(window.todos) ? 
+            window.todos.filter(todo => todo.archived).length : 0;
+            
+        const archivedProjectCount = typeof window.projects !== 'undefined' && Array.isArray(window.projects) ?
+            window.projects.filter(project => project.archived).length : 0;
+            
         const archivedCount = archivedTodoCount + archivedProjectCount;
         
         // Update title with count
@@ -326,83 +210,7 @@ const ArchiveUI = {
                 this.renderArchivedTodos();
             }
         }
-    },
-    
-    // Create a UI element for an archived todo
-    createArchivedTodoItem: function(todo, project) {
-        const todoElement = document.createElement('div');
-        todoElement.className = 'card todo-card shadow-sm archived-todo';
-        todoElement.id = `archived-todo-${todo.id}`;
-        todoElement.style.borderLeftColor = project.color;
-        
-        const cardBody = document.createElement('div');
-        cardBody.className = 'card-body p-2';
-        
-        const row = document.createElement('div');
-        row.className = 'd-flex align-items-center';
-        
-        // Todo text with completion indicator
-        const textCol = document.createElement('div');
-        textCol.className = 'todo-text completed';
-        
-        // Replace @tags with highlighted spans for display
-        const displayText = todo.text.replace(/(\B@[a-zA-Z0-9_-]+\b)/g, '<span class="tag-reference">$1</span>');
-        textCol.innerHTML = displayText;
-        
-        // Action buttons
-        const actionCol = document.createElement('div');
-        actionCol.className = 'action-buttons ms-auto';
-        
-        // Notes button
-        const notesButton = document.createElement('button');
-        notesButton.className = 'btn btn-sm btn-outline-info me-1';
-        notesButton.innerHTML = '<i class="bi bi-sticky"></i>';
-        notesButton.title = 'View/Edit Notes';
-        notesButton.onclick = () => {
-            NotesUI.openNotesModal(todo.id);
-        };
-        
-        const unarchiveButton = document.createElement('button');
-        unarchiveButton.className = 'btn btn-sm btn-outline-primary me-1';
-        unarchiveButton.innerHTML = '<i class="bi bi-arrow-up-square"></i>';
-        unarchiveButton.title = 'Unarchive';
-        unarchiveButton.onclick = () => {
-            unarchiveTodo(todo.id);
-        };
-        
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'btn btn-sm btn-outline-danger';
-        deleteButton.innerHTML = '<i class="bi bi-trash"></i>';
-        deleteButton.onclick = () => {
-            if (confirm('Are you sure you want to delete this archived task?')) {
-                deleteTodo(todo.id);
-            }
-        };
-        
-        actionCol.appendChild(notesButton);
-        actionCol.appendChild(unarchiveButton);
-        actionCol.appendChild(deleteButton);
-        
-        row.appendChild(textCol);
-        row.appendChild(actionCol);
-        
-        cardBody.appendChild(row);
-        
-        // Add tag pills if the todo has tags
-        if (todo.tags && todo.tags.length > 0 && TagUI) {
-            const tagPills = TagUI.createTagPills(todo.tags);
-            if (tagPills) {
-                cardBody.appendChild(tagPills);
-            }
-        }
-        
-        todoElement.appendChild(cardBody);
-        
-        // Add notes preview if notes exist
-        if (NotesUI && todo.notes && todo.notes.length > 0) {
-            NotesUI.addNotesIndicator(todoElement, todo);
-        }
-        
-        return todoElement;
     }
 };
+
+console.log('ArchiveUI module defined in global scope');

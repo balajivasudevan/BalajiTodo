@@ -116,6 +116,85 @@ function loadCollapsedState() {
  * Project Ordering
  */
 
+// Initialize project orders if they don't exist
+function initializeProjectOrders() {
+    // Check if any projects are missing an order property
+    const needsOrdering = projects.some(p => p.order === undefined);
+    
+    if (needsOrdering) {
+        // Sort projects alphabetically but with Inbox first
+        const sortedProjects = [...projects].sort((a, b) => {
+            if (a.id === 'inbox') return -1;
+            if (b.id === 'inbox') return 1;
+            return a.name.localeCompare(b.name);
+        });
+        
+        // Assign orders
+        sortedProjects.forEach((project, index) => {
+            project.order = project.id === 'inbox' ? 0 : index;
+        });
+        
+        // Save changes
+        saveChanges();
+    }
+}
+
+// Move a project up in the order
+function moveProjectUp(projectId) {
+    // Don't allow reordering the Inbox project
+    if (projectId === 'inbox') {
+        return;
+    }
+    
+    // Find the project's current position
+    const activeProjects = projects.filter(p => !p.archived);
+    const sortedProjects = [...activeProjects].sort((a, b) => {
+        if (a.id === 'inbox') return -1;
+        if (b.id === 'inbox') return 1;
+        const aOrder = a.order !== undefined ? a.order : Number.MAX_SAFE_INTEGER;
+        const bOrder = b.order !== undefined ? b.order : Number.MAX_SAFE_INTEGER;
+        return aOrder - bOrder;
+    });
+    
+    const currentIndex = sortedProjects.findIndex(p => p.id === projectId);
+    
+    // Can't move up if it's already at the top (after Inbox which is always first)
+    if (currentIndex <= 1) {
+        return;
+    }
+    
+    // Call reorderProject with the new position
+    reorderProject(projectId, currentIndex - 1);
+}
+
+// Move a project down in the order
+function moveProjectDown(projectId) {
+    // Don't allow reordering the Inbox project
+    if (projectId === 'inbox') {
+        return;
+    }
+    
+    // Find the project's current position
+    const activeProjects = projects.filter(p => !p.archived);
+    const sortedProjects = [...activeProjects].sort((a, b) => {
+        if (a.id === 'inbox') return -1;
+        if (b.id === 'inbox') return 1;
+        const aOrder = a.order !== undefined ? a.order : Number.MAX_SAFE_INTEGER;
+        const bOrder = b.order !== undefined ? b.order : Number.MAX_SAFE_INTEGER;
+        return aOrder - bOrder;
+    });
+    
+    const currentIndex = sortedProjects.findIndex(p => p.id === projectId);
+    
+    // Can't move down if it's already at the bottom
+    if (currentIndex >= sortedProjects.length - 1) {
+        return;
+    }
+    
+    // Call reorderProject with the new position
+    reorderProject(projectId, currentIndex + 1);
+}
+
 // Reorder a project to a different position
 function reorderProject(projectId, newPosition) {
     console.log(`Reordering project ${projectId} to position ${newPosition}`);
@@ -549,35 +628,85 @@ function unarchiveProject(id) {
 
 // Delete a project
 function deleteProject(id) {
+    console.log("Deleting project:", id);
+    
     // Don't allow deleting the Inbox project
     if (id === 'inbox') {
-        UI.showStatusMessage('Cannot delete the Inbox project.', 'danger');
+        if (typeof UI !== 'undefined' && typeof UI.showStatusMessage === 'function') {
+            UI.showStatusMessage('Cannot delete the Inbox project.', 'danger');
+        }
         return;
     }
     
-    // Find the Inbox project to move tasks to
-    const inboxProject = projects.find(p => p.id === 'inbox');
-    
+    // Ensure inbox project exists
+    let inboxProject = window.projects.find(p => p.id === 'inbox');
     if (!inboxProject) {
-        UI.showStatusMessage('Error: Inbox project not found.', 'danger');
+        // Create inbox project if it doesn't exist
+        console.log("Creating Inbox project because it's missing");
+        inboxProject = {
+            id: 'inbox',
+            name: 'Inbox',
+            color: '#03DAC6',
+            notes: "",
+            isDefault: true,
+            archived: false,
+            order: 0,
+            createdAt: new Date().toISOString()
+        };
+        window.projects.push(inboxProject);
+    }
+    
+    console.log("Before delete, projects count:", window.projects.length);
+    console.log("Projects before:", window.projects.map(p => p.id));
+    
+    // Find the project to delete (for debugging)
+    const projectToDelete = window.projects.find(p => p.id === id);
+    if (!projectToDelete) {
+        console.error("Project not found for deletion:", id);
         return;
     }
     
     // Remove the project
-    projects = projects.filter(project => project.id !== id);
+    window.projects = window.projects.filter(project => project.id !== id);
+    
+    console.log("After delete, projects count:", window.projects.length);
+    console.log("Projects after:", window.projects.map(p => p.id));
     
     // Move todos from this project to Inbox
-    todos = todos.map(todo => {
+    window.todos = window.todos.map(todo => {
         if (todo.projectId === id) {
             return { ...todo, projectId: inboxProject.id };
         }
         return todo;
     });
     
-    saveChanges();
-    UI.updateProjectsDropdown();
-    UI.renderProjects();
-    UI.renderTodosByProject();
+    // Save changes to storage
+    if (typeof saveChanges === 'function') {
+        saveChanges();
+    } else if (typeof Storage !== 'undefined' && typeof Storage.saveToLocalStorage === 'function') {
+        Storage.saveToLocalStorage();
+    } else {
+        console.error("No way to save changes after deleting project");
+    }
+    
+    // Update UI
+    if (typeof UI !== 'undefined') {
+        if (typeof UI.updateProjectsDropdown === 'function') {
+            UI.updateProjectsDropdown();
+        }
+        
+        if (typeof UI.renderProjects === 'function') {
+            UI.renderProjects();
+        }
+        
+        if (typeof UI.renderTodosByProject === 'function') {
+            UI.renderTodosByProject();
+        }
+        
+        if (typeof UI.showStatusMessage === 'function') {
+            UI.showStatusMessage(`Project "${projectToDelete.name}" deleted successfully.`, 'success');
+        }
+    }
 }
 
 // Combined save function for autosave

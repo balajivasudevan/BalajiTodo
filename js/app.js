@@ -4,6 +4,7 @@
 
 // Initialize the application when the document is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOMContentLoaded event fired');
     // Small delay to ensure all scripts are loaded
     setTimeout(initApp, 100);
 });
@@ -11,32 +12,75 @@ document.addEventListener('DOMContentLoaded', function() {
 function initApp() {
     console.log("Initializing Todo App...");
     
-    // Initialize UI components
-    if (typeof UI !== 'undefined' && typeof UI.init === 'function') {
-        UI.init();
-    } else {
-        console.error("UI module not found or init method missing");
-    }
-    
-    // Load data from localStorage
+    // IMPORTANT: Load data from localStorage FIRST before initializing UI
     if (typeof Storage !== 'undefined' && typeof Storage.loadFromLocalStorage === 'function') {
+        console.log("Loading data from localStorage...");
         Storage.loadFromLocalStorage();
     } else {
         console.error("Storage module not found or loadFromLocalStorage method missing");
+        
+        // Initialize default data structures if missing
+        if (typeof window.todos === 'undefined' || !Array.isArray(window.todos)) {
+            console.log("Creating default todos array");
+            window.todos = [];
+        }
+        
+        if (typeof window.projects === 'undefined' || !Array.isArray(window.projects)) {
+            console.log("Creating default projects array");
+            window.projects = [];
+            
+            // Create inbox project if there are no projects
+            if (typeof createInboxProject === 'function') {
+                console.log("Creating default Inbox project");
+                createInboxProject();
+            }
+        }
     }
     
     // Load project collapse state
     if (typeof loadCollapsedState === 'function') {
         loadCollapsedState();
+    } else {
+        console.warn("loadCollapsedState function not found");
+        // Create default if it doesn't exist
+        if (typeof window.collapsedProjects === 'undefined') {
+            window.collapsedProjects = new Set();
+        }
     }
     
     // Initialize project ordering
     if (typeof initializeProjectOrders === 'function') {
         initializeProjectOrders();
+    } else {
+        console.warn("initializeProjectOrders function not found");
+    }
+    
+    // Make sure todos and projects arrays exist before initializing UI
+    window.todos = window.todos || [];
+    window.projects = window.projects || [];
+    
+    // Initialize UI components AFTER data is loaded
+    if (typeof UI !== 'undefined' && typeof UI.init === 'function') {
+        console.log("Initializing UI...");
+        UI.init();
+    } else {
+        console.error("UI module not found or init method missing");
+        
+        // Fallback to direct element access if UI is missing
+        const statusMessage = document.getElementById('status-message');
+        if (statusMessage) {
+            statusMessage.textContent = 'Error: UI module not found. Please check the console for details.';
+            statusMessage.className = 'alert alert-danger';
+            statusMessage.style.display = 'block';
+        }
+        
+        return;
     }
     
     // If we have a stored file path but no file handle yet, show a notification
-    if (filePath && !fileHandle && typeof isFileSystemAccessSupported !== 'undefined' && isFileSystemAccessSupported) {
+    if (typeof filePath !== 'undefined' && filePath && 
+        typeof fileHandle !== 'undefined' && !fileHandle && 
+        typeof isFileSystemAccessSupported !== 'undefined' && isFileSystemAccessSupported) {
         if (typeof UI !== 'undefined' && typeof UI.showStatusMessage === 'function') {
             UI.showStatusMessage('Click "Set File Path" to reconnect to your saved file.', 'info');
         }
@@ -45,12 +89,12 @@ function initApp() {
     // Set up event listeners
     setupEventListeners();
     
-    // Initialize archive badge
+    // Initialize archive badge if available
     if (typeof ArchiveUI !== 'undefined' && typeof ArchiveUI.updateArchiveBadge === 'function') {
         ArchiveUI.updateArchiveBadge();
     }
     
-    // Initialize tag filters
+    // Initialize tag filters if available
     if (typeof TagUI !== 'undefined' && typeof TagUI.updateTagFilters === 'function') {
         TagUI.updateTagFilters();
     }
@@ -67,12 +111,23 @@ function initApp() {
 }
 
 function setupEventListeners() {
-    if (typeof UI === 'undefined' || !UI.elements) {
-        console.error("UI or UI.elements not available for setting up event listeners");
-        return;
-    }
+    // Get UI elements
+    let elements = {};
     
-    const elements = UI.elements;
+    if (typeof UI !== 'undefined' && UI.elements) {
+        elements = UI.elements;
+    } else {
+        // Fallback to direct DOM access
+        elements = {
+            todoForm: document.getElementById('todo-form'),
+            todoInput: document.getElementById('todo-input'),
+            projectSelect: document.getElementById('project-select'),
+            projectForm: document.getElementById('project-form'),
+            projectInput: document.getElementById('project-input'),
+            projectColor: document.getElementById('project-color'),
+            filePathButton: document.getElementById('file-path-button')
+        };
+    }
     
     // Add todo
     if (elements.todoForm) {
@@ -229,6 +284,7 @@ function setupKeyboardShortcuts() {
         // ? - Show keyboard shortcuts modal (only when not in an input)
         if (!isInInput && event.key === '?' && !event.ctrlKey && !event.altKey && !event.metaKey) {
             event.preventDefault();
+            
             if (typeof KeyboardShortcuts !== 'undefined' && typeof KeyboardShortcuts.toggleShortcutsModal === 'function') {
                 KeyboardShortcuts.toggleShortcutsModal();
             }
